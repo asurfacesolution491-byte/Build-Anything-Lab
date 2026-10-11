@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Build Anything Lab</title>
+<style>
+:root{--bg:#11101b;--panel:#1c1a2b;--panel2:#26233a;--line:#3d3858;--text:#f4f1ff;--muted:#b6b0d2;--accent:#a78bfa;--good:#55e6a5;--bad:#ff7777}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px system-ui,-apple-system,Segoe UI,sans-serif;overflow:hidden}
+button,select,input{font:inherit}button{border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:9px;padding:9px 11px;min-height:40px;cursor:pointer}button:active{transform:translateY(1px)}button.active{border-color:var(--accent);background:#393052}button:disabled{opacity:.45;cursor:not-allowed}
+.top{height:54px;display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid var(--line);background:#171525}
+.brand{font-weight:900;letter-spacing:.3px;font-size:16px;white-space:nowrap}.brand span{color:var(--accent)}.top .spacer{flex:1}.status{font-size:12px;color:var(--muted);white-space:nowrap}
+.layout{display:grid;grid-template-columns:210px minmax(0,1fr) 240px;height:calc(100dvh - 54px);min-height:0}
+aside{background:var(--panel);overflow:auto;padding:10px;border-right:1px solid var(--line)}aside.right{border-right:0;border-left:1px solid var(--line)}
+.section{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:800;margin:10px 0 7px}
+.partgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}.part{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:66px;padding:6px;font-size:12px}.part .ico{font-size:23px;line-height:1.1}
+.tools{display:grid;grid-template-columns:1fr 1fr;gap:6px}.smallnote{font-size:12px;line-height:1.45;color:var(--muted)}
+main{position:relative;min-width:0;min-height:0;background:#11101b;overflow:hidden}
+#world{display:block;width:100%;height:100%;touch-action:none}
+.canvasbar{position:absolute;left:10px;top:10px;display:flex;gap:6px;flex-wrap:wrap;max-width:calc(100% - 20px)}
+.canvasbar button{background:#1c1a2beF;backdrop-filter:blur(8px);padding:8px 10px}
+.hint{position:absolute;left:10px;bottom:10px;max-width:min(480px,calc(100% - 20px));background:#1c1a2beF;border:1px solid var(--line);padding:8px 11px;border-radius:10px;color:var(--muted);font-size:12px;pointer-events:none}
+.badge{display:inline-block;padding:2px 6px;border-radius:5px;background:#393052;color:#ddd2ff;font-size:11px}
+.row{display:flex;align-items:center;gap:7px;margin:7px 0}.row label{color:var(--muted);font-size:12px;flex:1}.row input[type=range]{width:100px}.row input[type=text],.row input[type=number],.row select{min-width:0;width:100%;background:#11101b;border:1px solid var(--line);border-radius:7px;color:var(--text);padding:7px}
+.propname{font-size:16px;font-weight:800;overflow-wrap:anywhere}.propdesc{color:var(--muted);font-size:12px;line-height:1.4;margin:4px 0 12px}
+.propactions{display:grid;grid-template-columns:1fr 1fr;gap:6px}.wide{width:100%;margin-top:6px}
+#message{color:var(--good);min-height:18px;font-size:12px;margin-top:8px}
+.mobilebottom{display:none}
+@media(max-width:850px){.layout{grid-template-columns:150px minmax(0,1fr);}.right{display:none}.partgrid{grid-template-columns:1fr 1fr}.brand{font-size:14px}.status{display:none}}
+@media(max-width:560px){.layout{grid-template-columns:112px minmax(0,1fr)}aside{padding:7px}.part{min-height:59px;font-size:10px}.part .ico{font-size:20px}.section{font-size:10px}.tools{grid-template-columns:1fr}.top{gap:6px;padding:6px}.top button{padding:7px;font-size:12px}.brand{max-width:110px;white-space:normal;line-height:1.1}.canvasbar button{font-size:11px;padding:7px}.hint{font-size:11px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">BUILD <span>ANYTHING</span> LAB</div>
+  <span class="badge">v0.1 • sandbox</span>
+  <div class="spacer"></div>
+  <div class="status" id="topStatus">Edit mode · unsaved build</div>
+  <button id="runBtn">▶ Test</button>
+  <button id="saveBtn">💾 Save</button>
+</header>
+<div class="layout">
+<aside>
+  <div class="section">Build parts</div>
+  <div class="partgrid" id="partGrid"></div>
+  <div class="section">Tools</div>
+  <div class="tools">
+    <button id="selectTool" class="active">↖ Select</button>
+    <button id="wireTool">〰 Connect</button>
+    <button id="eraseTool">⌫ Erase</button>
+    <button id="raiseTool">⬆ Raise level</button>
+    <button id="lowerTool">⬇ Lower level</button>
+    <button id="rotateTool">⟳ Rotate</button>
+  </div>
+  <div class="section">Build level</div>
+  <div class="row"><label>Height layer</label><strong id="layerLabel">0</strong></div>
+  <div class="smallnote">Choose a part, then tap an empty grid tile to place it. Tap a placed part to select it. Use Connect to wire logic parts together.</div>
+  <div class="section">World</div>
+  <div class="row"><label>Grid size</label><select id="gridSize"><option value="12">12 × 12</option><option value="16" selected>16 × 16</option><option value="20">20 × 20</option><option value="24">24 × 24</option></select></div>
+  <button id="clearBtn" class="wide">🗑 Clear build</button>
+  <button id="exportBtn" class="wide">⇩ Export build JSON</button>
+  <button id="importBtn" class="wide">⇧ Import build JSON</button>
+  <input type="file" id="fileInput" accept=".json,application/json" hidden>
+</aside>
+<main>
+  <canvas id="world" aria-label="Isometric building area"></canvas>
+  <div class="canvasbar">
+    <button id="zoomOut">−</button><button id="zoomIn">+</button><button id="centerBtn">◎ Center</button><button id="viewBtn">▱ Toggle grid</button>
+  </div>
+  <div class="hint" id="hint">Pick a part on the left, then tap a tile to build. Drag the empty area to pan.</div>
+</main>
+<aside class="right">
+  <div class="section">Selected part</div>
+  <div id="properties"><div class="smallnote">Nothing selected. Tap a part in your build to edit it.</div></div>
+  <div class="section">Signal monitor</div>
+  <div id="monitor" class="smallnote">Test your build to see signal values.</div>
+  <div class="section">Quick guide</div>
+  <div class="smallnote">
+    <p><b>Logic:</b> Place an Input, a gate, and an Output. Select Connect, then tap the source and destination.</p>
+    <p><b>Test:</b> Press Test. Tap Input parts to toggle 0/1. Gates update automatically.</p>
+    <p><b>Data:</b> Connect multiple input bits through logic gates to build your own binary systems.</p>
+    <p><b>Save:</b> Save downloads a JSON file. Export/Import lets you move builds between devices.</p>
+  </div>
+  <div id="message" aria-live="polite"></div>
+</aside>
+</div>
+<script>
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id);
+const canvas=$('world'),ctx=canvas.getContext('2d');
+const PARTS=[
+ {type:'block',name:'Block',icon:'🧱',cat:'Build',color:'#9a8cae',desc:'Basic structural block.'},
+ {type:'metal',name:'Metal',icon:'⬜',cat:'Build',color:'#8b9ba9',desc:'Strong-looking structural block.'},
+ {type:'glass',name:'Glass',icon:'🔹',cat:'Build',color:'#5ecbe8',desc:'Transparent-style block.'},
+ {type:'wood',name:'Wood',icon:'🪵',cat:'Build',color:'#bd8756',desc:'Wooden structural block.'},
+ {type:'input',name:'Input',icon:'🔘',cat:'Logic',color:'#51d6a4',desc:'Manual binary signal source. Tap while testing to toggle 0/1.'},
+ {type:'and',name:'AND gate',icon:'∧',cat:'Logic',color:'#68a7ff',desc:'Outputs 1 only when every input is 1.'},
+ {type:'or',name:'OR gate',icon:'∨',cat:'Logic',color:'#68a7ff',desc:'Outputs 1 when at least one input is 1.'},
+ {type:'not',name:'NOT gate',icon:'¬',cat:'Logic',color:'#68a7ff',desc:'Inverts the first input.'},
+ {type:'xor',name:'XOR gate',icon:'⊕',cat:'Logic',color:'#68a7ff',desc:'Outputs 1 when its inputs differ.'},
+ {type:'output',name:'Output',icon:'💡',cat:'Logic',color:'#f3cb62',desc:'Displays the received binary signal.'},
+ {type:'display',name:'Display',icon:'▦',cat:'Logic',color:'#f3cb62',desc:'Displays a binary value; use several for multi-bit data.'},
+ {type:'delay',name:'Delay',icon:'⏱',cat:'Logic',color:'#c69bff',desc:'One-tick signal delay.'},
+ {type:'motor',name:'Motor',icon:'⚙️',cat:'Mechanics',color:'#f29d65',desc:'Rotating component; animation is shown in test mode.'},
+ {type:'hinge',name:'Hinge',icon:'◉',cat:'Mechanics',color:'#f29d65',desc:'Pivot component for mechanical experiments.'},
+ {type:'sensor',name:'Sensor',icon:'📡',cat:'Mechanics',color:'#f29d65',desc:'Outputs 1 while test mode is active.'}
+];
+const byType=Object.fromEntries(PARTS.map(p=>[p.type,p]));
+let grid=16,layer=0,selectedType='block',tool='select',selectedId=null,wireStart=null,running=false,showGrid=true,zoom=1,panX=0,panY=0;
+let parts=[],wires=[],nextId=1,tickTimer=null,tick=0,panDrag=null,changed=false;
+const COLORS={bg:'#11101b',grid:'#38334f',grid2:'#29253c',wire:'#a78bfa',active:'#55e6a5'};
+function say(s,good=true){$('message').textContent=s;$('message').style.color=good?'var(--good)':'var(--bad)';}
+function setChanged(){changed=true;$('topStatus').textContent=running?'Test mode · changes paused':'Edit mode · unsaved build';}
+function partById(id){return parts.find(p=>p.id===id)}
+function defaults(type){return {id:nextId++,type,x:0,y:0,z:layer,rot:0,value:0,out:0,delayValue:0,name:byType[type]?.name||type}}
+function buildPalette(){
+ const root=$('partGrid');root.innerHTML='';let cat='';
+ for(const p of PARTS){if(p.cat!==cat){cat=p.cat;const label=document.createElement('div');label.className='section';label.style.gridColumn='1/-1';label.style.margin='8px 0 0';label.textContent=cat;root.appendChild(label)}
+ const b=document.createElement('button');b.className='part'+(selectedType===p.type?' active':'');b.innerHTML='<span class="ico">'+p.icon+'</span><span>'+p.name+'</span>';b.addEventListener('click',()=>{selectedType=p.type;tool='place';updateTools();buildPalette();$('hint').textContent='Tap an empty tile to place '+p.name+'.';});root.appendChild(b)}
+}
+function updateTools(){for(const [id,t] of [['selectTool','select'],['wireTool','wire'],['eraseTool','erase'],['raiseTool','raise'],['lowerTool','lower'],['rotateTool','rotate']])$(id).classList.toggle('active',tool===t);$('layerLabel').textContent=layer}
+function resize(){const r=canvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.max(1,Math.round(r.width*dpr));canvas.height=Math.max(1,Math.round(r.height*dpr));ctx.setTransform(dpr,0,0,dpr,0,0);draw()}
+function tileW(){return Math.min(54,Math.max(25,Math.min(canvas.clientWidth/(grid+3),canvas.clientHeight/(grid*.58+4))*1.2))*zoom}
+function tileH(){return tileW()*.5}
+function origin(){return {x:canvas.clientWidth/2+panX,y:canvas.clientHeight*.46+panY}}
+function iso(x,y,z=0){const o=origin(),w=tileW(),h=tileH();return {x:o.x+(x-y)*w/2,y:o.y+(x+y)*h/2-z*h*.9}}
+function uniso(px,py){const o=origin(),w=tileW(),h=tileH();const a=(px-o.x)/(w/2),b=(py-o.y)/(h/2);return {x:Math.round((a+b)/2),y:Math.round((b-a)/2)}}
+function polygon(points,fill,stroke){ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke()}}
+function drawTile(x,y,z=0){const p=iso(x,y,z),w=tileW(),h=tileH();polygon([{x:p.x,y:p.y},{x:p.x+w/2,y:p.y+h/2},{x:p.x,y:p.y+h},{x:p.x-w/2,y:p.y+h/2}],null,COLORS.grid)}
+function drawCube(part){
+ const p=iso(part.x,part.y,part.z),w=tileW()*.88,h=tileH()*.88,up=h*.92;
+ const col=byType[part.type]?.color||'#9a8cae';
+ const top=[{x:p.x,y:p.y-up},{x:p.x+w/2,y:p.y-up+h/2},{x:p.x,y:p.y-up+h},{x:p.x-w/2,y:p.y-up+h/2}];
+ const left=[{x:p.x-w/2,y:p.y-up+h/2},{x:p.x,y:p.y-up+h},{x:p.x,y:p.y+h},{x:p.x-w/2,y:p.y+h/2}];
+ const right=[{x:p.x+w/2,y:p.y-up+h/2},{x:p.x,y:p.y-up+h},{x:p.x,y:p.y+h},{x:p.x+w/2,y:p.y+h/2}];
+ polygon(left,shade(col,-32),null);polygon(right,shade(col,-15),null);
+ let fill=col;if(part.type==='glass')fill='#5ecbe888';
+ polygon(top,fill,part.id===selectedId?'#ffffff':'#151320');
+ if(part.type==='input'||part.type==='output'||part.type==='display'||['and','or','not','xor','delay','sensor','motor','hinge'].includes(part.type)){
+  ctx.fillStyle=part.out?'#55e6a5':'#f4f1ff';ctx.font=`bold ${Math.max(10,tileW()*.28)}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';
+  let label=part.type==='input'?String(part.value):part.type==='output'||part.type==='display'?String(part.out):part.type==='and'?'AND':part.type==='or'?'OR':part.type==='not'?'NOT':part.type==='xor'?'XOR':part.type==='delay'?'DLY':part.type==='sensor'?'SNS':part.type==='motor'?'⚙': '◉';
+  ctx.fillText(label,p.x,p.y-up+h/2);
+ }
+ if(part.id===selectedId){ctx.strokeStyle='#ffffff';ctx.lineWidth=2;ctx.setLineDash([4,3]);polygon(top,null,'#ffffff');ctx.setLineDash([])}
+}
+function shade(hex,amt){if(hex.length!==7)return hex;let n=parseInt(hex.slice(1),16),r=Math.max(0,Math.min(255,(n>>16)+amt)),g=Math.max(0,Math.min(255,((n>>8)&255)+amt)),b=Math.max(0,Math.min(255,((n&255)+amt)));return '#'+(1<<24|r<<16|g<<8|b).toString(16).slice(1)}
+function drawWires(){for(const w of wires){const a=partById(w.from),b=partById(w.to);if(!a||!b)continue;const p=iso(a.x,a.y,a.z),q=iso(b.x,b.y,b.z);ctx.beginPath();ctx.moveTo(p.x,p.y-tileH()*.5);ctx.lineTo(q.x,q.y-tileH()*.5);ctx.strokeStyle=a.out?'#55e6a5':'#8b80ad';ctx.lineWidth=a.out?3:2;ctx.setLineDash([5,4]);ctx.stroke();ctx.setLineDash([]);}}
+function draw(){
+ const w=canvas.clientWidth,h=canvas.clientHeight;if(!w||!h)return;ctx.clearRect(0,0,w,h);
+ const grad=ctx.createLinearGradient(0,0,0,h);grad.addColorStop(0,'#151323');grad.addColorStop(1,'#0f0e17');ctx.fillStyle=grad;ctx.fillRect(0,0,w,h);
+ if(showGrid){for(let z=0;z<=layer;z++){for(let x=-Math.floor(grid/2);x<Math.ceil(grid/2);x++)for(let y=-Math.floor(grid/2);y<Math.ceil(grid/2);y++)drawTile(x,y,z)}}
+ drawWires();const ordered=[...parts].sort((a,b)=>(a.x+a.y+a.z)-(b.x+b.y+b.z));ordered.forEach(drawCube);
+ if(wireStart){const p=partById(wireStart);if(p){const q=iso(p.x,p.y,p.z);ctx.beginPath();ctx.arc(q.x,q.y-tileH()*.5,Math.max(7,tileW()*.16),0,Math.PI*2);ctx.strokeStyle='#ffffff';ctx.lineWidth=3;ctx.stroke()}}
+}
+function screenPoint(e){const r=canvas.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}}
+function hitPart(pt){let best=null,dist=Infinity;for(const p of parts){const q=iso(p.x,p.y,p.z),d=Math.hypot(pt.x-q.x,pt.y-(q.y-tileH()*.4));if(d<tileW()*.58&&d<dist){best=p;dist=d}}return best}
+function nearestFree(x,y,z){return !parts.some(p=>p.x===x&&p.y===y&&p.z===z)}
+function onCanvasDown(e){
+ if(running && tool!=='select'){return}
+ const pt=screenPoint(e),hit=hitPart(pt);
+ if(e.button===2){panDrag={x:e.clientX,y:e.clientY,px:panX,py:panY};canvas.setPointerCapture(e.pointerId);return}
+ if(tool==='wire'){
+  if(!hit){say('Tap a component to start or finish a connection.',false);return}
+  if(!wireStart){wireStart=hit.id;selectedId=hit.id;say('Now tap the component that should receive this signal.');}
+  else if(hit.id===wireStart){wireStart=null;say('Connection cancelled.',false)}
+  else {if(wires.some(w=>w.from===wireStart&&w.to===hit.id)){say('Those parts are already connected.',false)}else{wires.push({from:wireStart,to:hit.id});setChanged();say('Connected '+partById(wireStart).name+' → '+hit.name+'.')}wireStart=null;selectedId=hit.id;updateProperties()}
+  draw();return;
+ }
+ if(tool==='erase'){if(hit){parts=parts.filter(p=>p.id!==hit.id);wires=wires.filter(w=>w.from!==hit.id&&w.to!==hit.id);if(selectedId===hit.id)selectedId=null;setChanged();updateProperties();draw();say('Part erased.')}return}
+ if(tool==='rotate'){if(hit){hit.rot=(hit.rot+90)%360;setChanged();selectedId=hit.id;updateProperties();draw()}return}
+ if(tool==='raise'||tool==='lower'){if(hit){hit.z=Math.max(0,Math.min(8,hit.z+(tool==='raise'?1:-1)));layer=hit.z;setChanged();updateTools();draw();say('Part moved to layer '+hit.z)}else layer=Math.max(0,Math.min(8,layer+(tool==='raise'?1:-1)));updateTools();draw();return}
+ if(hit){selectedId=hit.id;if(running&&hit.type==='input'){hit.value=hit.value?0:1;evaluate();draw();updateProperties();return}if(running&&hit.type==='sensor'){say('Sensor is active while testing.')}updateProperties();draw();return}
+ if(tool==='select'&&!running){const tile=uniso(pt.x,pt.y);const x=Math.max(-Math.floor(grid/2),Math.min(Math.ceil(grid/2)-1,tile.x)),y=Math.max(-Math.floor(grid/2),Math.min(Math.ceil(grid/2)-1,tile.y));if(nearestFree(x,y,layer)){const p=defaults(selectedType);p.x=x;p.y=y;p.z=layer;parts.push(p);selectedId=p.id;setChanged();updateProperties();draw();say(byType[p.type].name+' placed.')}else say('That tile is occupied on this layer.',false)}
+}
+canvas.addEventListener('pointerdown',e=>{if(e.button===2){onCanvasDown(e);return}onCanvasDown(e)});
+canvas.addEventListener('pointermove',e=>{if(panDrag){panX=panDrag.px+(e.clientX-panDrag.x);panY=panDrag.py+(e.clientY-panDrag.y);draw()}});
+canvas.addEventListener('pointerup',()=>{panDrag=null});
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+function updateProperties(){
+ const root=$('properties'),p=partById(selectedId);
+ if(!p){root.innerHTML='<div class="smallnote">Nothing selected. Tap a part in your build to edit it.</div>';return}
+ const def=byType[p.type];root.innerHTML='';
+ const name=document.createElement('div');name.className='propname';name.textContent=def.icon+' '+(p.name||def.name);root.appendChild(name);
+ const desc=document.createElement('div');desc.className='propdesc';desc.textContent=def.desc;root.appendChild(desc);
+ const addRow=(label,control)=>{const row=document.createElement('div');row.className='row';const l=document.createElement('label');l.textContent=label;row.append(l,control);root.appendChild(row)};
+ const nm=document.createElement('input');nm.type='text';nm.value=p.name||def.name;nm.maxLength=28;nm.addEventListener('change',()=>{p.name=nm.value||def.name;setChanged();updateProperties()});addRow('Name',nm);
+ const z=document.createElement('input');z.type='number';z.min=0;z.max=8;z.value=p.z;z.addEventListener('change',()=>{p.z=Math.max(0,Math.min(8,Number(z.value)||0));layer=p.z;updateTools();setChanged();draw()});addRow('Layer',z);
+ const rot=document.createElement('select');[0,90,180,270].forEach(v=>{let o=document.createElement('option');o.value=v;o.textContent=v+'°';rot.append(o)});rot.value=p.rot;rot.addEventListener('change',()=>{p.rot=Number(rot.value);setChanged();draw()});addRow('Rotation',rot);
+ if(p.type==='input'){const val=document.createElement('select');[0,1].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=String(v);val.append(o)});val.value=p.value;val.addEventListener('change',()=>{p.value=Number(val.value);setChanged();evaluate();draw()});addRow('Input bit',val)}
+ const pos=document.createElement('div');pos.className='smallnote';pos.textContent='Grid position: X '+p.x+', Y '+p.y+', Z '+p.z+' · Output: '+p.out;root.appendChild(pos);
+ const actions=document.createElement('div');actions.className='propactions';
+ const rotb=document.createElement('button');rotb.textContent='⟳ Rotate';rotb.onclick=()=>{p.rot=(p.rot+90)%360;setChanged();updateProperties();draw()};
+ const del=document.createElement('button');del.textContent='⌫ Delete';del.onclick=()=>{parts=parts.filter(q=>q.id!==p.id);wires=wires.filter(w=>w.from!==p.id&&w.to!==p.id);selectedId=null;setChanged();updateProperties();draw();say('Part deleted.')};actions.append(rotb,del);root.append(actions);
+ const conns=wires.filter(w=>w.from===p.id||w.to===p.id);const c=document.createElement('div');c.className='smallnote';c.style.marginTop='10px';c.textContent='Connections: '+conns.length;root.append(c);
+ if(conns.length){const list=document.createElement('div');list.className='smallnote';list.style.marginTop='4px';for(const w of conns){const a=partById(w.from),b=partById(w.to);const line=document.createElement('div');line.style.margin='4px 0';line.textContent=(a?.name||'?')+' → '+(b?.name||'?');list.append(line)}root.append(list);const dc=document.createElement('button');dc.className='wide';dc.textContent='Disconnect all';dc.onclick=()=>{wires=wires.filter(w=>w.from!==p.id&&w.to!==p.id);setChanged();updateProperties();draw()};root.append(dc)}
+}
+function inputsOf(p){return wires.filter(w=>w.to===p.id).map(w=>partById(w.from)).filter(Boolean)}
+function evaluate(){
+ // Iterative evaluation handles ordinary acyclic circuits and settles small feedback loops.
+ for(const p of parts){if(p.type==='input')p.out=p.value;else if(p.type==='sensor')p.out=running?1:0;else if(p.type==='motor'||p.type==='hinge')p.out=inputsOf(p).some(q=>q.out)?1:0;else p.out=0}
+ for(let pass=0;pass<Math.max(4,parts.length+1);pass++){
+  let changedOut=false;
+  for(const p of parts){if(p.type==='input')continue;const ins=inputsOf(p).map(q=>q.out);let v=0;
+   switch(p.type){case'and':v=ins.length>0&&ins.every(Boolean)?1:0;break;case'or':v=ins.some(Boolean)?1:0;break;case'not':v=ins.length?(ins[0]?0:1):1;break;case'xor':v=ins.reduce((a,b)=>a^b,0);break;case'output':case'display':v=ins.length?ins[0]:0;break;case'delay':v=p.delayValue||0;break;case'sensor':v=running?1:0;break;case'motor':case'hinge':v=ins.some(Boolean)?1:0;break;default:v=0}
+   if(v!==p.out){p.out=v;changedOut=true}
+  }
+  if(!changedOut)break
+ }
+ for(const p of parts){if(p.type==='delay'){const ins=inputsOf(p);p.delayValue=ins.length?ins[0].out:0}}
+ $('monitor').innerHTML='';
+ const monitorParts=parts.filter(p=>['input','output','display','motor','sensor','delay'].includes(p.type)||['and','or','not','xor'].includes(p.type));
+ if(!monitorParts.length){$('monitor').textContent='No logic parts yet. Add an Input, gate, and Output.'}
+ else {for(const p of monitorParts){const row=document.createElement('div');row.style.display='flex';row.style.justifyContent='space-between';row.style.gap='6px';row.style.margin='5px 0';const n=document.createElement('span');n.textContent=(p.name||byType[p.type].name);n.style.overflowWrap='anywhere';const v=document.createElement('b');v.textContent=p.out?'1 / ON':'0 / OFF';v.style.color=p.out?'var(--good)':'var(--muted)';row.append(n,v);$('monitor').append(row)}}
+ updateProperties();
+}
+function toggleRun(){
+ running=!running;
+ if(running){tool='select';wireStart=null;tick=0;evaluate();$('runBtn').textContent='■ Stop';$('hint').textContent='TEST MODE: tap Input blocks to toggle 0/1. Press Stop to edit again.';$('topStatus').textContent='Test mode · signals live';tickTimer=setInterval(()=>{tick++;for(const p of parts)if(p.type==='motor'&&p.out)p.rot=(p.rot+15)%360;evaluate();draw()},250);say('Test mode started.')}
+ else {clearInterval(tickTimer);tickTimer=null;$('runBtn').textContent='▶ Test';$('topStatus').textContent='Edit mode · '+(changed?'unsaved build':'saved build');$('hint').textContent='Pick a part on the left, then tap a tile to build. Drag empty space to pan.';evaluate();draw();say('Test mode stopped.')}
+ updateTools();buildPalette();draw();
+}
+function serialize(){return {app:'Build Anything Lab',version:1,grid,layer,parts,wires}}
+function loadBuild(data){
+ if(!data||!Array.isArray(data.parts)||!Array.isArray(data.wires))throw new Error('This file does not look like a Build Anything Lab save.');
+ const valid=data.parts.filter(p=>p&&byType[p.type]&&Number.isFinite(Number(p.x))&&Number.isFinite(Number(p.y)));
+ parts=valid.map(p=>({...defaults(p.type),...p,id:Number(p.id)||nextId++}));wires=data.wires.filter(w=>parts.some(p=>p.id===w.from)&&parts.some(p=>p.id===w.to)).map(w=>({from:w.from,to:w.to}));
+ nextId=Math.max(1,...parts.map(p=>Number(p.id)+1));grid=[12,16,20,24].includes(Number(data.grid))?Number(data.grid):16;layer=Math.max(0,Math.min(8,Number(data.layer)||0));$('gridSize').value=grid;updateTools();selectedId=null;wireStart=null;changed=false;updateProperties();evaluate();draw();$('topStatus').textContent='Loaded build';say('Build loaded successfully.');
+}
+function download(filename,text,mime){const blob=new Blob([text],{type:mime});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500)}
+$('runBtn').addEventListener('click',toggleRun);
+$('saveBtn').addEventListener('click',()=>{download('build-anything-lab-save.json',JSON.stringify(serialize(),null,2),'application/json');changed=false;$('topStatus').textContent='Saved build';say('Save file downloaded.')});
+$('exportBtn').addEventListener('click',()=>download('build-anything-lab-export.json',JSON.stringify(serialize(),null,2),'application/json'));
+$('importBtn').addEventListener('click',()=>$('fileInput').click());
+$('fileInput').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{loadBuild(JSON.parse(await f.text()))}catch(err){say(err.message||'Could not load that file.',false)}e.target.value=''});
+$('clearBtn').addEventListener('click',()=>{if(confirm('Clear all parts and connections?')){parts=[];wires=[];selectedId=null;wireStart=null;nextId=1;setChanged();updateProperties();evaluate();draw();say('Build cleared.')}});
+$('gridSize').addEventListener('change',e=>{grid=Number(e.target.value);draw();setChanged()});
+$('selectTool').onclick=()=>{tool='select';wireStart=null;updateTools();say('Select tool active.')};
+$('wireTool').onclick=()=>{tool='wire';wireStart=null;updateTools();$('hint').textContent='Tap the source component, then the destination component.';say('Connect tool active.')};
+$('eraseTool').onclick=()=>{tool='erase';wireStart=null;updateTools();say('Tap a part to erase it.')};
+$('raiseTool').onclick=()=>{tool='raise';updateTools();say('Tap a part to raise it one level, or an empty tile to change build level.')};
+$('lowerTool').onclick=()=>{tool='lower';updateTools();say('Tap a part to lower it one level, or an empty tile to change build level.')};
+$('rotateTool').onclick=()=>{tool='rotate';updateTools();say('Tap a part to rotate it.')};
+$('zoomIn').onclick=()=>{zoom=Math.min(2.2,zoom*1.15);draw()};
+$('zoomOut').onclick=()=>{zoom=Math.max(.55,zoom/1.15);draw()};
+$('centerBtn').onclick=()=>{panX=0;panY=0;zoom=1;draw()};
+$('viewBtn').onclick=()=>{showGrid=!showGrid;draw();$('viewBtn').textContent=showGrid?'▱ Hide grid':'▦ Show grid'};
+window.addEventListener('resize',resize);
+window.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName))return;if(e.key==='Escape'){wireStart=null;tool='select';updateTools();draw()}if(e.key.toLowerCase()==='r'&&selectedId){const p=partById(selectedId);if(p){p.rot=(p.rot+90)%360;setChanged();draw();updateProperties()}}if(e.key==='Delete'&&selectedId){const p=partById(selectedId);if(p){parts=parts.filter(q=>q.id!==p.id);wires=wires.filter(w=>w.from!==p.id&&w.to!==p.id);selectedId=null;setChanged();updateProperties();draw()}}});
+buildPalette();updateTools();resize();evaluate();
+// Starter demonstration so a new user can immediately see how wiring works.
+const demoInput=defaults('input');Object.assign(demoInput,{x:-2,y:0,z:0,name:'Bit A',value:1});
+const demoGate=defaults('not');Object.assign(demoGate,{x:0,y:0,z:0,name:'NOT gate'});
+const demoOut=defaults('output');Object.assign(demoOut,{x:2,y:0,z:0,name:'Inverted output'});
+parts.push(demoInput,demoGate,demoOut);wires.push({from:demoInput.id,to:demoGate.id},{from:demoGate.id,to:demoOut.id});selectedId=demoInput.id;evaluate();updateProperties();draw();
+})();
+</script>
+</body>
+</html>
